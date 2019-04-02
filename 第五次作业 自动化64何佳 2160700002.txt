@@ -1,0 +1,204 @@
+《pylbq01.m》
+
+clear;
+strImg='test2.tif';  %选择被处理的图像
+Img=imread(strImg);
+[M,N]=size(Img);
+% figure,imshow(Img);  %显示原图像
+% title([strImg '原图像']);
+Img=double(Img);
+P=2*M;   %P×Q为填充后的图片大小。P≥2M-1，Q≥2N-1，常选用P=2M，Q=2N
+Q=2*N;
+fp=zeros(P,Q);
+%fp为零填充后的图像
+for x=1:M
+    for y=1:N
+         fp(x,y)=Img(x,y);
+    end
+end
+% figure,imshow(fp,[]);
+% title([strImg '零填充后']);
+%用(-1)^x+y乘以fp(x,y)移到其变换的中心
+for x=1:P
+    for y=1:Q
+         fp(x,y)= fp(x,y)*((-1)^(x+y));
+    end
+end
+F=fft2(fp);  %傅里叶变换得到F(u,v)
+% figure,imshow(uint8(abs(F/256)));  %原图像频谱图像
+% title([strImg '原图像频谱图']);
+%创建滤波器，lbq为0时为butterworth低通滤波器，非0时为高斯低通滤波器
+lbq=1;
+if lbq==0
+    N_lbq=2;   %定义butterworth低通滤波器阶数
+    D0=75;   %定义butterworth低通滤波器半径（截止频率）
+    strlbq=['butterworth低通滤波器' ' N=' num2str(N_lbq) ' D0=' num2str(D0)];
+    for u=1:P
+        for v=1:Q
+            D(u,v)=sqrt((u-fix(P/2))^2+(v-fix(Q/2))^2);
+            H(u,v)=1/(1+(D(u,v)/D0)^(2*N_lbq));
+            G(u,v)=H(u,v)*F(u,v);
+        end
+    end
+else
+    D0=100;   %定义高斯滤波器半径（截止频率）
+    strlbq=['高斯低通滤波器' ' D0=' num2str(D0)];
+    for u=1:P
+        for v=1:Q
+            D(u,v)=sqrt((u-fix(P/2))^2+(v-fix(Q/2))^2);
+            H(u,v)=exp(-D(u,v)^2/(2*D0^2));
+            G(u,v)=H(u,v)*F(u,v);
+        end
+    end
+end
+% figure,imshow(uint8(abs(H*255)),[]);  %显示低通滤波器频谱
+% title([strlbq '频谱图']);
+% figure,imshow(uint8(abs(G/256)),[]);  %显示滤波后图像频谱
+% title([strImg strlbq '滤波后频谱图']);
+
+g=abs(real(ifft2(G)));   %傅里叶反变换
+% figure,imshow(uint8(g));
+% title([strImg ' ' strlbq '滤波后']);
+NewImg=imcrop(uint8(g),[0,0,M-1,N-1]);  %图像裁剪，取滤波后图像左上角M×N部分的图像作为最终输出图像
+figure,imshow(NewImg);
+title([strImg ' ' strlbq '最终结果']);
+%计算功率谱比
+SumG=0;
+SumF=0;
+for u=1:P
+    for v=1:Q
+        SumG=SumG+(abs(G(u,v)))^2;
+        SumF=SumF+(abs(F(u,v)))^2;
+    end
+end
+Pow=SumG/SumF
+
+《pylbq02.m》
+
+clear;
+strImg='test4 copy.bmp';  %选择被处理的图像
+Img=imread(strImg);
+[M,N]=size(Img);
+figure,imshow(Img);  %显示原图像
+title([strImg '原图像']);
+Img=double(Img);
+P=2*M;   %P×Q为填充后的图片大小。P≥2M-1，Q≥2N-1，常选用P=2M，Q=2N
+Q=2*N;
+fp=zeros(P,Q);
+%fp为零填充后的图像
+for x=1:M
+    for y=1:N
+         fp(x,y)=Img(x,y);
+    end
+end
+figure,imshow(fp,[]);
+title([strImg '零填充后']);
+%用(-1)^x+y乘以fp(x,y)移到其变换的中心
+for x=1:P
+    for y=1:Q
+         fp(x,y)= fp(x,y)*((-1)^(x+y));
+    end
+end
+F=fft2(fp);  %傅里叶变换得到F(u,v)
+figure,imshow(uint8(abs(F/256)));  %原图像频谱图像
+title([strImg '原图像频谱图']);
+%创建滤波器，lbq为0时为butterworth高通滤波器，非0时为高斯高通滤波器
+lbq=1;
+if lbq==0
+    N_lbq=2;   %定义butterworth高通滤波器阶数
+    D0=120;   %定义butterworth高通滤波器半径（截止频率）
+    strlbq=['butterworth高通滤波器' ' N=' num2str(N_lbq) ' D0=' num2str(D0)];
+    for u=1:P
+        for v=1:Q
+            D(u,v)=sqrt((u-fix(P/2))^2+(v-fix(Q/2))^2);
+            H(u,v)=1/(1+(D0/D(u,v))^(2*N_lbq));
+            G(u,v)=H(u,v)*F(u,v);
+        end
+    end
+else
+    D0=120;   %定义高斯高通滤波器半径（截止频率）
+    strlbq=['高斯高通滤波器' ' D0=' num2str(D0)];
+    for u=1:P
+        for v=1:Q
+            D(u,v)=sqrt((u-fix(P/2))^2+(v-fix(Q/2))^2);
+            H(u,v)=1-exp(-D(u,v)^2/(2*D0^2));
+            G(u,v)=H(u,v)*F(u,v);
+        end
+    end
+end
+figure,imshow(uint8(abs(H*255)),[]);  %显示高通滤波器频谱
+title([strlbq '频谱图']);
+figure,imshow(uint8(abs(G/256)),[]);  %显示滤波后图像频谱
+title([strImg strlbq '滤波后频谱图']);
+g=abs(real(ifft2(G)))+abs(fp);   %傅里叶反变换
+figure,imshow(uint8(g));
+title([strImg ' ' strlbq '滤波后']);
+NewImg=imcrop(uint8(g),[0,0,M-1,N-1]);  %图像裁剪，取滤波后图像左上角M×N部分的图像作为最终输出图像
+figure,imshow(NewImg);
+title([strImg ' ' strlbq '最终结果']);
+%计算功率谱比
+SumG=0;
+SumF=0;
+for u=1:P
+    for v=1:Q
+        SumG=SumG+(abs(G(u,v)))^2;
+        SumF=SumF+(abs(F(u,v)))^2;
+    end
+end
+Pow=SumG/SumF
+
+《pylbq03.m》
+
+clear;
+strImg='test3_corrupt.pgm';  %选择被处理的图像
+Img=imread(strImg);
+[M,N]=size(Img);
+figure,imshow(Img);  %显示原图像
+title([strImg '原图像']);
+Img=double(Img);
+
+% laplace模板高通滤波
+% Laplace=[0 -1 0;-1 4 -1; 0 -1 0];
+Laplace=[1 1 1;1 -8 1; 1 1 1];
+ImgLaplace=conv2(Img,Laplace,'same');
+figure,imshow(uint8(ImgLaplace));
+title('Laplace高通滤波图像');
+g=imadd(Img,immultiply(ImgLaplace,1));%原图像与拉普拉斯图像叠加
+figure,imshow(uint8(g));
+title('Laplace锐化增强后的图像');
+
+% Unsharp masking钝化模板高通滤波
+P=2*M;   %P×Q为填充后的图片大小。P≥2M-1，Q≥2N-1，常选用P=2M，Q=2N
+Q=2*N;
+fp=zeros(P,Q);
+%fp为零填充后的图像
+for x=1:M
+    for y=1:N
+         fp(x,y)=Img(x,y);
+    end
+end
+%用(-1)^x+y乘以fp(x,y)移到其变换的中心
+for x=1:P
+    for y=1:Q
+         fp(x,y)= fp(x,y)*((-1)^(x+y));
+    end
+end
+F=fft2(fp);  %傅里叶变换得到F(u,v)
+%创建滤波器，钝化采用高斯低通滤波器
+D0=10;   %定义高斯低通滤波器半径（截止频率）
+for u=1:P
+    for v=1:Q
+        D(u,v)=sqrt((u-fix(P/2))^2+(v-fix(Q/2))^2);
+        H(u,v)=exp(-D(u,v)^2/(2*D0^2));
+        G(u,v)=H(u,v)*F(u,v);
+    end
+end
+ImgUM=abs(fp)-abs(real(ifft2(G)));
+ImgUM=imcrop(uint8(ImgUM),[0,0,N,M]);  %图像裁剪，取滤波后图像左上角M×N部分的图像作为最终输出图像
+figure,imshow(uint8(ImgUM));
+title('Unsharp Masking高通滤波图像');
+g=imadd(Img,immultiply(double(ImgUM),1));%原图像与拉普拉斯图像叠加
+figure,imshow(uint8(g));
+title('Unsharp Masking锐化增强后的图像');
+
+        
